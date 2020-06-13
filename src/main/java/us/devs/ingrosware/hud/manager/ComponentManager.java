@@ -1,13 +1,17 @@
 package us.devs.ingrosware.hud.manager;
 
 import com.google.common.reflect.ClassPath;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import us.devs.ingrosware.hud.Component;
 import us.devs.ingrosware.manager.impl.AbstractMapManager;
-import us.devs.ingrosware.module.IModule;
 import us.devs.ingrosware.util.ClassUtil;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * made for Ingros
@@ -31,11 +35,12 @@ public class ComponentManager extends AbstractMapManager<String, Component> {
         loadExternalComponents();
 
         getValues().forEach(Component::init);
+        load();
     }
 
     @Override
     public void close() {
-
+        save();
     }
 
     private void register(Component component) {
@@ -49,10 +54,12 @@ public class ComponentManager extends AbstractMapManager<String, Component> {
             final ClassPath classpath = ClassPath.from(loader);
             for (ClassPath.ClassInfo classInfo : classpath.getTopLevelClassesRecursive(modulePackage)) {
                 final Class<?> componentClass = classInfo.load();
-                final Component component = (Component) componentClass.newInstance();
-                register(component);
+                if(Component.class.isAssignableFrom(componentClass)) {
+                    final Component component = (Component) componentClass.newInstance();
+                    register(component);
 
-                System.out.println(String.format("[Ingros] Registered Component %s", classInfo.getSimpleName()));
+                    System.out.println(String.format("[Ingros] Registered Component %s", classInfo.getSimpleName()));
+                }
             }
 
         } catch (IOException | IllegalAccessException | InstantiationException e) {
@@ -76,6 +83,49 @@ public class ComponentManager extends AbstractMapManager<String, Component> {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    public void load() {
+        getValues().forEach(component -> {
+            Path pluginConfiguration = new File(dir, component.getLabel().toLowerCase() + ".json").toPath();
+            if (Files.exists(pluginConfiguration)) {
+                try (Reader reader = new FileReader(pluginConfiguration.toFile())) {
+                    final JsonElement element = new JsonParser().parse(reader);
+                    if (element.isJsonObject())
+                        component.load(element.getAsJsonObject());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    public void save() {
+        File[] configurations = dir.listFiles();
+        if (configurations != null) {
+            for (File configuration : configurations)
+                if(configuration.isFile())
+                    configuration.delete();
+        }
+
+        getValues().forEach(component -> {
+            Path pluginConfiguration = new File(dir, component.getLabel().toLowerCase() + ".json").toPath();
+            final JsonObject object = new JsonObject();
+            component.save(object);
+            if (!object.entrySet().isEmpty()) {
+                try {
+                    Files.createFile(pluginConfiguration);
+                } catch (IOException e) {
+                    return;
+                }
+                try (Writer writer = new FileWriter(pluginConfiguration.toFile())) {
+                    writer.write(new GsonBuilder()
+                            .setPrettyPrinting()
+                            .create()
+                            .toJson(object));
+                } catch (IOException ignored) { }
+            }
+        });
     }
 
 }

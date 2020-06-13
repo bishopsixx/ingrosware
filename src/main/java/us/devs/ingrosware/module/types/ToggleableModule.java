@@ -41,6 +41,7 @@ public class ToggleableModule implements IModule, Hideable, Stateable {
     @Override
     public void init() {
         IngrosWare.INSTANCE.getBus().register(this);
+        IngrosWare.INSTANCE.getSettingManager().scan(this);
     }
 
     @Override

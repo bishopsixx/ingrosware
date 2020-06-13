@@ -3,6 +3,7 @@ package us.devs.ingrosware.hud;
 import com.google.gson.JsonObject;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
+import us.devs.ingrosware.IngrosWare;
 import us.devs.ingrosware.hud.annotation.ComponentManifest;
 import us.devs.ingrosware.traits.Configable;
 import us.devs.ingrosware.traits.Hideable;
@@ -83,12 +84,33 @@ public class Component implements Labelable, Hideable, Configable {
 
     @Override
     public void save(JsonObject directory) {
-
+        directory.addProperty("x", x);
+        directory.addProperty("y", y);
+        directory.addProperty("hidden", hidden);
+        if (IngrosWare.INSTANCE.getSettingManager().getSettingsFromObject(this) != null)
+            IngrosWare.INSTANCE.getSettingManager().getSettingsFromObject(this).forEach(property -> directory.addProperty(property.getLabel(), property.getValue().toString()));
     }
 
     @Override
     public void load(JsonObject directory) {
-
+        directory.entrySet().forEach(data -> {
+            switch (data.getKey()) {
+                case "name":
+                    return;
+                case "x":
+                    setX(data.getValue().getAsInt());
+                    return;
+                case "y":
+                    setY(data.getValue().getAsInt());
+                    return;
+                case "hidden":
+                    setHidden(data.getValue().getAsBoolean());
+                    return;
+            }
+        });
+        if (IngrosWare.INSTANCE.getSettingManager().getSettingsFromObject(this) != null) {
+            directory.entrySet().forEach(entry -> IngrosWare.INSTANCE.getSettingManager().getSetting(this, entry.getKey()).ifPresent(property -> property.setValue(entry.getValue().getAsString())));
+        }
     }
 
     public float getLastX() {

@@ -1,0 +1,13 @@
+package us.devs.ingrosware.setting;
+
+/**
+ * made for Ingros
+ *
+ * @author Brennan
+ * @since 6/13/2020
+ **/
+public interface ISetting<V> {
+    V getValue();
+    void setValue(V value);
+    void setValue(String value);
+}

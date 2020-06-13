@@ -1,11 +1,16 @@
 package us.devs.ingrosware.module.manager;
 
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import us.devs.ingrosware.IngrosWare;
 import us.devs.ingrosware.manager.impl.AbstractMapManager;
 import us.devs.ingrosware.module.IModule;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -35,11 +40,12 @@ public class ModuleManager extends AbstractMapManager<String, IModule> {
         loadExternalModules();
 
         getValues().forEach(IModule::init);
+        load();
     }
 
     @Override
     public void close() {
-
+        save();
     }
 
     private void register(IModule module) {
@@ -53,10 +59,11 @@ public class ModuleManager extends AbstractMapManager<String, IModule> {
             final ClassPath classpath = ClassPath.from(loader); // scans the class path used by classloader
             for (ClassPath.ClassInfo classInfo : classpath.getTopLevelClassesRecursive(modulePackage)) {
                 final Class<?> moduleClass = classInfo.load();
-                final IModule module = (IModule) moduleClass.newInstance();
-                register(module);
-
-                System.out.println(String.format("[Ingros] Registered Module %s", classInfo.getSimpleName()));
+                if(IModule.class.isAssignableFrom(moduleClass)) {
+                    final IModule module = (IModule) moduleClass.newInstance();
+                    register(module);
+                    System.out.println(String.format("[Ingros] Registered Module %s", classInfo.getSimpleName()));
+                }
             }
 
         } catch (IOException | IllegalAccessException | InstantiationException e) {
@@ -81,6 +88,51 @@ public class ModuleManager extends AbstractMapManager<String, IModule> {
             e.printStackTrace();
         }
     }
+
+    public void load() {
+        getValues().forEach(plugin -> {
+            Path pluginConfiguration = new File(dir, plugin.getLabel().toLowerCase() + ".json").toPath();
+            if (Files.exists(pluginConfiguration)) {
+                try (Reader reader = new FileReader(pluginConfiguration.toFile())) {
+                    final JsonElement element = new JsonParser().parse(reader);
+                    if (element.isJsonObject())
+                        plugin.load(element.getAsJsonObject());
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+    public void save() {
+        File[] configurations = dir.listFiles();
+        if (configurations != null) {
+            for (File configuration : configurations)
+                if(configuration.isFile())
+                    configuration.delete();
+        }
+
+        getValues().forEach(plugin -> {
+            Path pluginConfiguration = new File(dir, plugin.getLabel().toLowerCase() + ".json").toPath();
+            final JsonObject object = new JsonObject();
+            plugin.save(object);
+            if (!object.entrySet().isEmpty()) {
+                try {
+                    Files.createFile(pluginConfiguration);
+                } catch (IOException e) {
+                    return;
+                }
+                try (Writer writer = new FileWriter(pluginConfiguration.toFile())) {
+                    writer.write(new GsonBuilder()
+                            .setPrettyPrinting()
+                            .create()
+                            .toJson(object));
+                } catch (IOException ignored) { }
+            }
+        });
+    }
+
+
 
     /**
      * could be done with a lambda/optional but they sloooow

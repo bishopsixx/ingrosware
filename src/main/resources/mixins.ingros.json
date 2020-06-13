@@ -10,6 +10,7 @@
     "MixinMainMenu",
     "MixinEntity",
     "MixinEntityPlayer",
-    "MixinEntityPlayerSP"
+    "MixinEntityPlayerSP",
+    "MixinNetworkManager"
   ]
 }
