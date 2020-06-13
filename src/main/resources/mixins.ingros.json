@@ -1,0 +1,15 @@
+{
+  "package": "us.devs.ingrosware.mixin.impl",
+  "refmap": "mixin.refmap.json",
+  "target": "@env(DEFAULT)",
+  "compatibilityLevel": "JAVA_8",
+  "verbose": false,
+  "mixins": [
+    "MixinMinecraft",
+    "MixinEntityRenderer",
+    "MixinMainMenu",
+    "MixinEntity",
+    "MixinEntityPlayer",
+    "MixinEntityPlayerSP"
+  ]
+}
